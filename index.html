@@ -17,7 +17,12 @@
     }
     #progress {
       font-weight: bold;
-      margin: 1rem 0;
+      margin: 1rem 0 0.25rem;
+    }
+    #lastUpdated {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 1rem;
     }
     label {
       font-weight: 500;
@@ -58,6 +63,7 @@
 <body>
   <h1>HOBY NYE - Lunch Check-In Progress</h1>
   <div id="progress">Loading...</div>
+  <div id="lastUpdated"></div>
 
   <label>
     <input type="checkbox" id="filterToggle" onchange="renderTable()" />
@@ -78,7 +84,6 @@
 
   <script>
     const endpoint = "https://script.google.com/macros/s/AKfycby65uKmLC1a9X7LPcHrhphPSG-cmKRs2yUHyCDyVAjyzhYTgJezdAt_WXxHIvLvL7V0/exec";
-
     let allData = [];
 
     async function loadData() {
@@ -86,7 +91,6 @@
         const response = await fetch(endpoint);
         const data = await response.json();
 
-        // Sort by last name
         allData = data.sort((a, b) => {
           const lastA = a.name.split(" ").slice(-1)[0].toLowerCase();
           const lastB = b.name.split(" ").slice(-1)[0].toLowerCase();
@@ -94,11 +98,13 @@
         });
 
         renderTable();
+        updateTimestamp();
       } catch (error) {
         document.getElementById("participantTable").innerHTML = `
           <tr><td colspan="4">Error loading data: ${error.message}</td></tr>
         `;
         document.getElementById("progress").textContent = "Error loading data.";
+        document.getElementById("lastUpdated").textContent = "";
       }
     }
 
@@ -111,9 +117,9 @@
         ? allData.filter(p => !p.submitted)
         : allData;
 
-      let submittedCount = allData.filter(p => p.submitted).length;
-      let totalCount = allData.length;
-      let percent = Math.round((submittedCount / totalCount) * 100);
+      const submittedCount = allData.filter(p => p.submitted).length;
+      const totalCount = allData.length;
+      const percent = Math.round((submittedCount / totalCount) * 100);
 
       document.getElementById("progress").textContent =
         `${submittedCount} of ${totalCount} submitted (${percent}%)`;
@@ -137,7 +143,19 @@
       });
     }
 
+    function updateTimestamp() {
+      const now = new Date();
+      const formatted = now.toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      document.getElementById("lastUpdated").textContent = `Last updated: ${formatted}`;
+    }
+
     loadData();
+    setInterval(loadData, 180000); // refresh every 3 minutes
   </script>
 </body>
 </html>
