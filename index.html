@@ -15,6 +15,15 @@
     h1 {
       color: #0055A4;
     }
+    #progress {
+      font-weight: bold;
+      margin: 1rem 0;
+    }
+    label {
+      font-weight: 500;
+      margin: 1rem 0;
+      display: inline-block;
+    }
     table {
       width: 100%;
       max-width: 800px;
@@ -48,6 +57,13 @@
 </head>
 <body>
   <h1>HOBY NYE - Lunch Check-In Progress</h1>
+  <div id="progress">Loading...</div>
+
+  <label>
+    <input type="checkbox" id="filterToggle" onchange="renderTable()" />
+    Show only those who have NOT submitted
+  </label>
+
   <table>
     <thead>
       <tr>
@@ -63,39 +79,62 @@
   <script>
     const endpoint = "https://script.google.com/macros/s/AKfycby65uKmLC1a9X7LPcHrhphPSG-cmKRs2yUHyCDyVAjyzhYTgJezdAt_WXxHIvLvL7V0/exec";
 
+    let allData = [];
+
     async function loadData() {
       try {
         const response = await fetch(endpoint);
         const data = await response.json();
 
         // Sort by last name
-        data.sort((a, b) => {
+        allData = data.sort((a, b) => {
           const lastA = a.name.split(" ").slice(-1)[0].toLowerCase();
           const lastB = b.name.split(" ").slice(-1)[0].toLowerCase();
           return lastA.localeCompare(lastB);
         });
 
-        const table = document.getElementById("participantTable");
-        table.innerHTML = "";
-
-        data.forEach(person => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${person.name}</td>
-            <td class="${person.submitted ? 'submitted' : 'missing'}">
-              ${person.submitted ? 'Yes' : 'No'}
-            </td>
-            <td>${person.lunch}</td>
-            <td class="note">${person.note || ""}</td>
-          `;
-          table.appendChild(row);
-        });
-
+        renderTable();
       } catch (error) {
         document.getElementById("participantTable").innerHTML = `
           <tr><td colspan="4">Error loading data: ${error.message}</td></tr>
         `;
+        document.getElementById("progress").textContent = "Error loading data.";
       }
+    }
+
+    function renderTable() {
+      const showOnlyMissing = document.getElementById("filterToggle").checked;
+      const table = document.getElementById("participantTable");
+      table.innerHTML = "";
+
+      const filtered = showOnlyMissing
+        ? allData.filter(p => !p.submitted)
+        : allData;
+
+      let submittedCount = allData.filter(p => p.submitted).length;
+      let totalCount = allData.length;
+      let percent = Math.round((submittedCount / totalCount) * 100);
+
+      document.getElementById("progress").textContent =
+        `${submittedCount} of ${totalCount} submitted (${percent}%)`;
+
+      if (filtered.length === 0) {
+        table.innerHTML = `<tr><td colspan="4">No records found</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(person => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${person.name}</td>
+          <td class="${person.submitted ? 'submitted' : 'missing'}">
+            ${person.submitted ? 'Yes' : 'No'}
+          </td>
+          <td>${person.lunch}</td>
+          <td class="note">${person.note || ""}</td>
+        `;
+        table.appendChild(row);
+      });
     }
 
     loadData();
