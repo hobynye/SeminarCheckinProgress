@@ -75,6 +75,8 @@
       <tr>
         <th>Name</th>
         <th>Submitted?</th>
+        <th>Color</th>
+        <th>Group</th>
         <th>Lunch Choice</th>
         <th>Note</th>
       </tr>
@@ -136,6 +138,8 @@
           <td class="${person.submitted ? 'submitted' : 'missing'}">
             ${person.submitted ? 'Yes' : 'No'}
           </td>
+          <td>${person.color}</td>
+          <td>${person.group}</td>
           <td>${person.lunch}</td>
           <td class="note">${person.note || ""}</td>
         `;
