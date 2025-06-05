@@ -2,172 +2,103 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Lunch Check-In Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HOBY NYE Check-In Progress</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f7f9fc;
-      color: #333;
-      margin: 0;
-      padding: 1rem;
-    }
-
-    h1 {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f8f9fa;
+      color: #212529;
+      padding: 2rem;
       text-align: center;
+    }
+    h1 {
       color: #0055A4;
     }
-
-    .search-bar {
-      max-width: 400px;
-      margin: 0 auto 1rem auto;
-      display: flex;
-      justify-content: center;
-    }
-
-    input[type="text"] {
-      flex: 1;
-      padding: 0.5rem;
-      font-size: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-
-    button {
-      margin-left: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: #0055A4;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
     table {
       width: 100%;
+      max-width: 800px;
+      margin: 1rem auto;
       border-collapse: collapse;
-      margin-top: 1rem;
+      background: white;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     }
-
     th, td {
+      padding: 0.75rem;
       border: 1px solid #ddd;
-      padding: 0.5rem;
       text-align: left;
     }
-
     th {
-      background-color: #f0f0f0;
+      background-color: #0055A4;
+      color: white;
     }
-
-    .status-yes {
+    .submitted {
       color: green;
       font-weight: bold;
     }
-
-    .status-no {
+    .missing {
       color: red;
       font-weight: bold;
     }
-
-    @media (max-width: 600px) {
-      table, thead, tbody, th, td, tr {
-        display: block;
-      }
-
-      th {
-        position: absolute;
-        top: -9999px;
-        left: -9999px;
-      }
-
-      tr {
-        margin: 0 0 1rem 0;
-        border: 1px solid #ccc;
-        padding: 1rem;
-        background: white;
-      }
-
-      td {
-        border: none;
-        padding: 0.5rem 0;
-        position: relative;
-      }
-
-      td::before {
-        content: attr(data-label);
-        font-weight: bold;
-        display: inline-block;
-        width: 120px;
-      }
+    .note {
+      font-size: 0.9rem;
+      color: #555;
     }
   </style>
 </head>
 <body>
-  <h1>HOBY NY East – Lunch Check-In Dashboard</h1>
-
-  <div class="search-bar">
-    <input type="text" id="searchInput" placeholder="Search by name..." />
-    <button onclick="loadData()">Refresh</button>
-  </div>
-
-  <table id="checkinTable">
+  <h1>HOBY NYE - Lunch Check-In Progress</h1>
+  <table>
     <thead>
       <tr>
         <th>Name</th>
-        <th>Checked In?</th>
-        <th>Lunch</th>
+        <th>Submitted?</th>
+        <th>Lunch Choice</th>
         <th>Note</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="participantTable"></tbody>
   </table>
 
   <script>
     const endpoint = "https://script.google.com/macros/s/AKfycby65uKmLC1a9X7LPcHrhphPSG-cmKRs2yUHyCDyVAjyzhYTgJezdAt_WXxHIvLvL7V0/exec";
 
     async function loadData() {
-      const tbody = document.querySelector("#checkinTable tbody");
-      const filter = document.getElementById("searchInput").value.toLowerCase();
-
-      tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
-
       try {
         const response = await fetch(endpoint);
         const data = await response.json();
 
-        const filtered = data.filter(entry =>
-          entry.name.toLowerCase().includes(filter)
-        );
-
-        tbody.innerHTML = "";
-
-        if (filtered.length === 0) {
-          tbody.innerHTML = "<tr><td colspan='4'>No matches found.</td></tr>";
-        }
-
-        filtered.forEach(entry => {
-          const tr = document.createElement("tr");
-
-          tr.innerHTML = `
-            <td data-label="Name">${entry.name}</td>
-            <td data-label="Checked In?" class="${entry.submitted ? 'status-yes' : 'status-no'}">
-              ${entry.submitted ? '✔️ Yes' : '❌ No'}
-            </td>
-            <td data-label="Lunch">${entry.lunch}</td>
-            <td data-label="Note">${entry.note}</td>
-          `;
-
-          tbody.appendChild(tr);
+        // Sort by last name
+        data.sort((a, b) => {
+          const lastA = a.name.split(" ").slice(-1)[0].toLowerCase();
+          const lastB = b.name.split(" ").slice(-1)[0].toLowerCase();
+          return lastA.localeCompare(lastB);
         });
+
+        const table = document.getElementById("participantTable");
+        table.innerHTML = "";
+
+        data.forEach(person => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${person.name}</td>
+            <td class="${person.submitted ? 'submitted' : 'missing'}">
+              ${person.submitted ? 'Yes' : 'No'}
+            </td>
+            <td>${person.lunch}</td>
+            <td class="note">${person.note || ""}</td>
+          `;
+          table.appendChild(row);
+        });
+
       } catch (error) {
-        tbody.innerHTML = `<tr><td colspan='4'>Error loading data</td></tr>`;
-        console.error("Error fetching dashboard data:", error);
+        document.getElementById("participantTable").innerHTML = `
+          <tr><td colspan="4">Error loading data: ${error.message}</td></tr>
+        `;
       }
     }
 
-    document.getElementById("searchInput").addEventListener("input", loadData);
-
-    window.onload = loadData;
+    loadData();
   </script>
 </body>
 </html>
