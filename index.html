@@ -1,115 +1,232 @@
-function renderGroupTable() {
-  const sheet = SpreadsheetApp.openById("1YWAMx5Lpr_5RoV1Q87Qoal9Q-laC4U1d0hTvFck0lmI")
-                   .getSheetByName("Group Assignments with Sorting");
-
-  if (!sheet) {
-    return HtmlService.createHtmlOutput("Error: Sheet not found.");
-  }
-
-  const lastRow = sheet.getLastRow();
-  const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
-
-  const data = [];
-  for (let i = 0; i < dataRange.length; i++) {
-    const row = dataRange[i];
-    const firstName = row[6];   // G
-    const lastName = row[7];    // H
-    const school = row[8];      // I
-    const color = row[14];      // O
-    const group = row[15];      // P
-
-    if (
-      !group || group.toString().trim() === "" ||
-      !firstName || firstName.toString().trim() === "" ||
-      group.startsWith("XXX") || group.startsWith("YYY")
-    ) {
-      continue;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HOBY NYE Check-In Progress</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f8f9fa;
+      color: #212529;
+      padding: 2rem;
+      text-align: center;
     }
 
-    data.push({ firstName, lastName, school, color, group });
-  }
+    h1 {
+      color: #0055A4;
+    }
 
-  // Sort by group then last name
-  data.sort((a, b) => {
-    if (a.group !== b.group) return a.group.localeCompare(b.group);
-    return a.lastName.localeCompare(b.lastName);
-  });
+    #progress {
+      font-weight: bold;
+      margin: 1rem 0 0.25rem;
+    }
 
-  const tableRows = data.map(row =>
-    `<tr style="background-color: ${row.color || '#ffffff'}22">
-      <td>${row.firstName}</td>
-      <td>${row.lastName}</td>
-      <td>${row.school}</td>
-      <td>${row.color}</td>
-      <td>${row.group}</td>
-    </tr>`
-  ).join('');
+    #lastUpdated {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 1rem;
+    }
 
-  let html = `<html><head><style>
-    body { font-family: 'Segoe UI', sans-serif; background-color: #f9f9f9; padding: 40px; }
-    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 0 8px rgba(0,0,0,0.1); }
-    th, td { padding: 10px; border: 1px solid #ddd; }
-    th { background: #FFD700; }
-    tr:nth-child(even) { background: #f2f2f2; }
-    .filter-controls { margin-bottom: 20px; }
+    label {
+      font-weight: 500;
+      margin: 0 1rem;
+      display: inline-block;
+    }
+
+    table {
+      width: 100%;
+      max-width: 1000px;
+      margin: 1rem auto;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    th, td {
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background-color: #0055A4;
+      color: white;
+    }
+
+    .submitted {
+      color: green;
+      font-weight: bold;
+    }
+
+    .missing {
+      color: red;
+      font-weight: bold;
+    }
+
+    .note {
+      font-size: 0.9rem;
+      color: #555;
+    }
+
     .progress-bar-container {
       width: 100%;
+      max-width: 600px;
+      height: 20px;
       background-color: #e0e0e0;
+      margin: 0 auto 1rem;
       border-radius: 10px;
       overflow: hidden;
-      height: 20px;
-      margin: 20px 0;
     }
+
     .progress-bar {
       height: 100%;
-      background-color: #4caf50;
-      text-align: center;
-      color: white;
-      line-height: 20px;
+      background-color: #28a745;
+      width: 0%;
+      transition: width 0.3s ease;
     }
-  </style></head><body>
-    <h1>HOBY NY East 2025 Participant Groups</h1>
+  </style>
+</head>
+<body>
+  <h1>HOBY NYE - Lunch Check-In Progress</h1>
 
-    <div class="filter-controls">
-      <input type="text" id="searchInput" onkeyup="searchTable()" placeholder="Search..." style="padding:10px; width:300px;">
-      <label><input type="checkbox" id="colorFilterToggle" onchange="searchTable()"> Filter by checked-in only (not implemented)</label>
-    </div>
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
 
-    <div class="progress-bar-container">
-      <div class="progress-bar" id="progressBar" style="width: 0%">0%</div>
-    </div>
+  <div id="progress">Loading...</div>
+  <div id="lastUpdated"></div>
 
-    <table><thead>
-      <tr><th>First Name</th><th>Last Name</th><th>School</th><th>Color</th><th>Group</th></tr>
-    </thead><tbody id="dataBody">
-    ${tableRows}
-    </tbody></table>
+  <div>
+    <label>
+      <input type="checkbox" id="filterMissing" onchange="renderTable()" />
+      Show only those who have NOT submitted
+    </label>
+    <label>
+      <input type="checkbox" id="filterSubmitted" onchange="renderTable()" />
+      Show only those who HAVE submitted
+    </label>
+  </div>
 
-    <script>
-      function searchTable() {
-        const input = document.getElementById("searchInput").value.toLowerCase();
-        const rows = document.querySelectorAll("#dataBody tr");
-        let visibleCount = 0;
-        rows.forEach(row => {
-          const text = row.textContent.toLowerCase();
-          const show = text.includes(input);
-          row.style.display = show ? "" : "none";
-          if (show) visibleCount++;
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Submitted?</th>
+        <th>Color</th>
+        <th>Group</th>
+        <th>Lunch Choice</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody id="participantTable"></tbody>
+  </table>
+
+  <script>
+    const endpoint = "https://script.google.com/macros/s/AKfycby65uKmLC1a9X7LPcHrhphPSG-cmKRs2yUHyCDyVAjyzhYTgJezdAt_WXxHIvLvL7V0/exec";
+    let allData = [];
+
+    async function loadData() {
+      try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+
+        allData = data.sort((a, b) => {
+          const groupA = (a.group || "").toLowerCase();
+          const groupB = (b.group || "").toLowerCase();
+          if (groupA !== groupB) return groupA.localeCompare(groupB);
+
+          const lastA = (a.name || "").split(" ").slice(-1)[0].toLowerCase();
+          const lastB = (b.name || "").split(" ").slice(-1)[0].toLowerCase();
+          return lastA.localeCompare(lastB);
         });
-        updateProgressBar(visibleCount, rows.length);
+
+        renderTable();
+        updateTimestamp();
+      } catch (error) {
+        document.getElementById("participantTable").innerHTML = `
+          <tr><td colspan="6">Error loading data: ${error.message}</td></tr>
+        `;
+        document.getElementById("progress").textContent = "Error loading data.";
+        document.getElementById("lastUpdated").textContent = "";
+      }
+    }
+
+    function renderTable() {
+      const showOnlyMissing = document.getElementById("filterMissing").checked;
+      const showOnlySubmitted = document.getElementById("filterSubmitted").checked;
+      const table = document.getElementById("participantTable");
+      table.innerHTML = "";
+
+      let filtered = allData;
+
+      if (showOnlyMissing) {
+        filtered = filtered.filter(p => !p.submitted);
+      } else if (showOnlySubmitted) {
+        filtered = filtered.filter(p => p.submitted);
       }
 
-      function updateProgressBar(shown, total) {
-        const percent = total > 0 ? Math.round((shown / total) * 100) : 0;
-        const bar = document.getElementById("progressBar");
-        bar.style.width = percent + "%";
-        bar.textContent = percent + "%";
+      const submittedCount = allData.filter(p => p.submitted).length;
+      const totalCount = allData.length;
+      const percent = Math.round((submittedCount / totalCount) * 100);
+
+      document.getElementById("progress").textContent =
+        `${submittedCount} of ${totalCount} submitted (${percent}%)`;
+
+      document.getElementById("progressBar").style.width = `${percent}%`;
+
+      if (filtered.length === 0) {
+        table.innerHTML = `<tr><td colspan="6">No records found</td></tr>`;
+        return;
       }
 
-      // Initial render
-      updateProgressBar(document.querySelectorAll("#dataBody tr").length, document.querySelectorAll("#dataBody tr").length);
-    </script>
-  </body></html>`;
+      filtered.forEach(person => {
+        const row = document.createElement("tr");
 
-  return HtmlService.createHtmlOutput(html);
-}
+        // Set background color if person.color exists
+        const bgColor = (person.color || "").toLowerCase();
+        row.style.backgroundColor = getColorHex(bgColor);
+
+        row.innerHTML = `
+          <td>${person.name || ""}</td>
+          <td class="${person.submitted ? 'submitted' : 'missing'}">
+            ${person.submitted ? 'Yes' : 'No'}
+          </td>
+          <td>${person.color || ""}</td>
+          <td>${person.group || ""}</td>
+          <td>${person.lunch || ""}</td>
+          <td class="note">${person.note || ""}</td>
+        `;
+        table.appendChild(row);
+      });
+    }
+
+    function updateTimestamp() {
+      const now = new Date();
+      const formatted = now.toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      document.getElementById("lastUpdated").textContent = `Last updated: ${formatted}`;
+    }
+
+    function getColorHex(name) {
+      switch (name.toLowerCase()) {
+        case 'red': return '#ffe5e5';
+        case 'orange': return '#fff4e0';
+        case 'yellow': return '#ffffe0';
+        case 'green': return '#e6ffed';
+        case 'blue': return '#e6f0ff';
+        case 'purple': return '#f3e6ff';
+        case 'pink': return '#ffe6f0';
+        default: return 'white';
+      }
+    }
+
+    loadData();
+    setInterval(loadData, 180000); // Refresh every 3 minutes
+  </script>
+</body>
+</html>
