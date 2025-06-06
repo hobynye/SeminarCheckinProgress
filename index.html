@@ -86,4 +86,140 @@
 <body>
   <h1>HOBY NYE - Check-In Progress</h1>
   <div id="progress">Loading...</div>
-  <div class="progress-bar-c
+  <div class="progress-bar-container">
+    <div id="progressBar" class="progress-bar"></div>
+  </div>
+  <div id="lastUpdated"></div>
+
+  <input type="text" id="searchInput" placeholder="Search by name, group, or color..." oninput="renderTable()" />
+
+  <label>
+    <input type="checkbox" id="filterMissingToggle" onchange="renderTable()" />
+    Show only those who have NOT submitted
+  </label>
+
+  <label>
+    <input type="checkbox" id="filterSubmittedToggle" onchange="renderTable()" />
+    Show only those who HAVE submitted
+  </label>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Submitted?</th>
+        <th>Color</th>
+        <th>Group</th>
+        <th>Lunch Choice</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody id="participantTable"></tbody>
+  </table>
+
+  <script>
+    const endpoint = "https://script.google.com/macros/s/AKfycby65uKmLC1a9X7LPcHrhphPSG-cmKRs2yUHyCDyVAjyzhYTgJezdAt_WXxHIvLvL7V0/exec";
+    let allData = [];
+
+    async function loadData() {
+      try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+
+        allData = data.sort((a, b) => {
+          if (a.group !== b.group) return (a.group || "").localeCompare(b.group || "");
+          const lastA = a.name.split(" ").slice(-1)[0].toLowerCase();
+          const lastB = b.name.split(" ").slice(-1)[0].toLowerCase();
+          return lastA.localeCompare(lastB);
+        });
+
+        renderTable();
+        updateTimestamp();
+      } catch (error) {
+        document.getElementById("participantTable").innerHTML = `
+          <tr><td colspan="6">Error loading data: ${error.message}</td></tr>
+        `;
+        document.getElementById("progress").textContent = "Error loading data.";
+        document.getElementById("lastUpdated").textContent = "";
+      }
+    }
+
+    function renderTable() {
+      const showOnlyMissing = document.getElementById("filterMissingToggle").checked;
+      const showOnlySubmitted = document.getElementById("filterSubmittedToggle").checked;
+      const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+
+      const table = document.getElementById("participantTable");
+      table.innerHTML = "";
+
+      const filtered = allData.filter(p => {
+        const matchesSearch =
+          p.name.toLowerCase().includes(searchTerm) ||
+          (p.group && p.group.toLowerCase().includes(searchTerm)) ||
+          (p.color && p.color.toLowerCase().includes(searchTerm));
+        const matchesMissing = !showOnlyMissing || !p.submitted;
+        const matchesSubmitted = !showOnlySubmitted || p.submitted;
+        return matchesSearch && matchesMissing && matchesSubmitted;
+      });
+
+      const submittedCount = allData.filter(p => p.submitted).length;
+      const totalCount = allData.length;
+      const percent = Math.round((submittedCount / totalCount) * 100);
+
+      document.getElementById("progress").textContent =
+        `${submittedCount} of ${totalCount} submitted (${percent}%)`;
+      document.getElementById("progressBar").style.width = `${percent}%`;
+
+      if (filtered.length === 0) {
+        table.innerHTML = `<tr><td colspan="6">No records found</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(person => {
+        const row = document.createElement("tr");
+        row.style.backgroundColor = getColorHex(person.color);
+        row.innerHTML = `
+          <td>${person.name}</td>
+          <td class="${person.submitted ? 'submitted' : 'missing'}">
+            ${person.submitted ? 'Yes' : 'No'}
+          </td>
+          <td>${person.color}</td>
+          <td>${person.group}</td>
+          <td>${person.lunch}</td>
+          <td class="note">${person.note || ""}</td>
+        `;
+        table.appendChild(row);
+      });
+    }
+
+    function updateTimestamp() {
+      const now = new Date();
+      const formatted = now.toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      document.getElementById("lastUpdated").textContent = `Last updated: ${formatted}`;
+    }
+
+    function getColorHex(colorName) {
+      const colors = {
+        orange: "#ffe5b4",
+        blue: "#d0e7ff",
+        red: "#ffd6d6",
+        green: "#d0ffd6",
+        yellow: "#ffffcc",
+        purple: "#e6ccff",
+        pink: "#ffe0f0",
+        teal: "#ccf2f4",
+        gray: "#eeeeee",
+      };
+      return colors[colorName.toLowerCase()] || "white";
+    }
+
+    loadData();
+    setInterval(loadData, 180000); // refresh every 3 minutes
+  </script>
+</body>
+</html>
