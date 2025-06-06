@@ -146,7 +146,7 @@
         updateTimestamp();
       } catch (error) {
         document.getElementById("participantTable").innerHTML = `
-          <tr><td colspan="6">Error loading data: ${error.message}</td></tr>
+          <tr><td colspan="7">Error loading data: ${error.message}</td></tr>
         `;
         document.getElementById("progress").textContent = "Error loading data.";
         document.getElementById("lastUpdated").textContent = "";
@@ -177,7 +177,7 @@
       document.getElementById("progressBar").style.width = `${percent}%`;
 
       if (filtered.length === 0) {
-        table.innerHTML = `<tr><td colspan="6">No records found</td></tr>`;
+        table.innerHTML = `<tr><td colspan="7">No records found</td></tr>`;
         return;
       }
 
