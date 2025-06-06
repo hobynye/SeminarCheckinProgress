@@ -26,8 +26,17 @@
     }
     label {
       font-weight: 500;
-      margin: 1rem 0;
+      margin: 0.5rem;
       display: inline-block;
+    }
+    input[type="text"] {
+      padding: 0.5rem;
+      width: 90%;
+      max-width: 500px;
+      margin: 1rem auto;
+      display: block;
+      border: 1px solid #ccc;
+      border-radius: 4px;
     }
     table {
       width: 100%;
@@ -58,108 +67,23 @@
       font-size: 0.9rem;
       color: #555;
     }
+    .progress-bar-container {
+      width: 100%;
+      max-width: 800px;
+      margin: 1rem auto;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 20px;
+      background-color: #28a745;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
   </style>
 </head>
 <body>
   <h1>HOBY NYE - Lunch Check-In Progress</h1>
   <div id="progress">Loading...</div>
-  <div id="lastUpdated"></div>
-
-  <label>
-    <input type="checkbox" id="filterToggle" onchange="renderTable()" />
-    Show only those who have NOT submitted
-  </label>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Submitted?</th>
-        <th>Color</th>
-        <th>Group</th>
-        <th>Lunch Choice</th>
-        <th>Note</th>
-      </tr>
-    </thead>
-    <tbody id="participantTable"></tbody>
-  </table>
-
-  <script>
-    const endpoint = "https://script.google.com/macros/s/AKfycby65uKmLC1a9X7LPcHrhphPSG-cmKRs2yUHyCDyVAjyzhYTgJezdAt_WXxHIvLvL7V0/exec";
-    let allData = [];
-
-    async function loadData() {
-      try {
-        const response = await fetch(endpoint);
-        const data = await response.json();
-
-        allData = data.sort((a, b) => {
-          const lastA = a.name.split(" ").slice(-1)[0].toLowerCase();
-          const lastB = b.name.split(" ").slice(-1)[0].toLowerCase();
-          return lastA.localeCompare(lastB);
-        });
-
-        renderTable();
-        updateTimestamp();
-      } catch (error) {
-        document.getElementById("participantTable").innerHTML = `
-          <tr><td colspan="4">Error loading data: ${error.message}</td></tr>
-        `;
-        document.getElementById("progress").textContent = "Error loading data.";
-        document.getElementById("lastUpdated").textContent = "";
-      }
-    }
-
-    function renderTable() {
-      const showOnlyMissing = document.getElementById("filterToggle").checked;
-      const table = document.getElementById("participantTable");
-      table.innerHTML = "";
-
-      const filtered = showOnlyMissing
-        ? allData.filter(p => !p.submitted)
-        : allData;
-
-      const submittedCount = allData.filter(p => p.submitted).length;
-      const totalCount = allData.length;
-      const percent = Math.round((submittedCount / totalCount) * 100);
-
-      document.getElementById("progress").textContent =
-        `${submittedCount} of ${totalCount} submitted (${percent}%)`;
-
-      if (filtered.length === 0) {
-        table.innerHTML = `<tr><td colspan="4">No records found</td></tr>`;
-        return;
-      }
-
-      filtered.forEach(person => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${person.name}</td>
-          <td class="${person.submitted ? 'submitted' : 'missing'}">
-            ${person.submitted ? 'Yes' : 'No'}
-          </td>
-          <td>${person.color}</td>
-          <td>${person.group}</td>
-          <td>${person.lunch}</td>
-          <td class="note">${person.note || ""}</td>
-        `;
-        table.appendChild(row);
-      });
-    }
-
-    function updateTimestamp() {
-      const now = new Date();
-      const formatted = now.toLocaleString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      });
-      document.getElementById("lastUpdated").textContent = `Last updated: ${formatted}`;
-    }
-
-    loadData();
-    setInterval(loadData, 180000); // refresh every 3 minutes
-  </script>
-</body>
-</html>
+  <div class="progress-bar-c
