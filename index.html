@@ -117,6 +117,7 @@
         <th>Group</th>
         <th>Lunch Choice</th>
         <th>Note</th>
+        <th>Phone</th>
       </tr>
     </thead>
     <tbody id="participantTable"></tbody>
@@ -196,6 +197,7 @@
           <td>${person.group || ""}</td>
           <td>${person.lunch || ""}</td>
           <td class="note">${person.note || ""}</td>
+          <td><a href="tel:${row.phone || ''}">${row.phone || ''}</a></td>
         `;
         table.appendChild(row);
       });
