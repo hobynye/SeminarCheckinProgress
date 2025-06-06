@@ -1,84 +1,115 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>HOBY NYE Check-In Progress</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f8f9fa;
-      color: #212529;
-      padding: 2rem;
-      text-align: center;
+function renderGroupTable() {
+  const sheet = SpreadsheetApp.openById("1YWAMx5Lpr_5RoV1Q87Qoal9Q-laC4U1d0hTvFck0lmI")
+                   .getSheetByName("Group Assignments with Sorting");
+
+  if (!sheet) {
+    return HtmlService.createHtmlOutput("Error: Sheet not found.");
+  }
+
+  const lastRow = sheet.getLastRow();
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+  const data = [];
+  for (let i = 0; i < dataRange.length; i++) {
+    const row = dataRange[i];
+    const firstName = row[6];   // G
+    const lastName = row[7];    // H
+    const school = row[8];      // I
+    const color = row[14];      // O
+    const group = row[15];      // P
+
+    if (
+      !group || group.toString().trim() === "" ||
+      !firstName || firstName.toString().trim() === "" ||
+      group.startsWith("XXX") || group.startsWith("YYY")
+    ) {
+      continue;
     }
 
-    h1 {
-      color: #0055A4;
-    }
+    data.push({ firstName, lastName, school, color, group });
+  }
 
-    #progress {
-      font-weight: bold;
-      margin: 1rem 0 0.25rem;
-    }
+  // Sort by group then last name
+  data.sort((a, b) => {
+    if (a.group !== b.group) return a.group.localeCompare(b.group);
+    return a.lastName.localeCompare(b.lastName);
+  });
 
-    #lastUpdated {
-      font-size: 0.9rem;
-      color: #555;
-      margin-bottom: 1rem;
-    }
+  const tableRows = data.map(row =>
+    `<tr style="background-color: ${row.color || '#ffffff'}22">
+      <td>${row.firstName}</td>
+      <td>${row.lastName}</td>
+      <td>${row.school}</td>
+      <td>${row.color}</td>
+      <td>${row.group}</td>
+    </tr>`
+  ).join('');
 
-    label {
-      font-weight: 500;
-      margin: 0 1rem;
-      display: inline-block;
-    }
-
-    table {
-      width: 100%;
-      max-width: 1000px;
-      margin: 1rem auto;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-    }
-
-    th, td {
-      padding: 0.75rem;
-      border: 1px solid #ddd;
-      text-align: left;
-    }
-
-    th {
-      background-color: #0055A4;
-      color: white;
-    }
-
-    .submitted {
-      color: green;
-      font-weight: bold;
-    }
-
-    .missing {
-      color: red;
-      font-weight: bold;
-    }
-
-    .note {
-      font-size: 0.9rem;
-      color: #555;
-    }
-
+  let html = `<html><head><style>
+    body { font-family: 'Segoe UI', sans-serif; background-color: #f9f9f9; padding: 40px; }
+    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 0 8px rgba(0,0,0,0.1); }
+    th, td { padding: 10px; border: 1px solid #ddd; }
+    th { background: #FFD700; }
+    tr:nth-child(even) { background: #f2f2f2; }
+    .filter-controls { margin-bottom: 20px; }
     .progress-bar-container {
       width: 100%;
-      max-width: 600px;
-      height: 20px;
       background-color: #e0e0e0;
-      margin: 0 auto 1rem;
       border-radius: 10px;
       overflow: hidden;
+      height: 20px;
+      margin: 20px 0;
     }
-
     .progress-bar {
       height: 100%;
-      background-
+      background-color: #4caf50;
+      text-align: center;
+      color: white;
+      line-height: 20px;
+    }
+  </style></head><body>
+    <h1>HOBY NY East 2025 Participant Groups</h1>
+
+    <div class="filter-controls">
+      <input type="text" id="searchInput" onkeyup="searchTable()" placeholder="Search..." style="padding:10px; width:300px;">
+      <label><input type="checkbox" id="colorFilterToggle" onchange="searchTable()"> Filter by checked-in only (not implemented)</label>
+    </div>
+
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar" style="width: 0%">0%</div>
+    </div>
+
+    <table><thead>
+      <tr><th>First Name</th><th>Last Name</th><th>School</th><th>Color</th><th>Group</th></tr>
+    </thead><tbody id="dataBody">
+    ${tableRows}
+    </tbody></table>
+
+    <script>
+      function searchTable() {
+        const input = document.getElementById("searchInput").value.toLowerCase();
+        const rows = document.querySelectorAll("#dataBody tr");
+        let visibleCount = 0;
+        rows.forEach(row => {
+          const text = row.textContent.toLowerCase();
+          const show = text.includes(input);
+          row.style.display = show ? "" : "none";
+          if (show) visibleCount++;
+        });
+        updateProgressBar(visibleCount, rows.length);
+      }
+
+      function updateProgressBar(shown, total) {
+        const percent = total > 0 ? Math.round((shown / total) * 100) : 0;
+        const bar = document.getElementById("progressBar");
+        bar.style.width = percent + "%";
+        bar.textContent = percent + "%";
+      }
+
+      // Initial render
+      updateProgressBar(document.querySelectorAll("#dataBody tr").length, document.querySelectorAll("#dataBody tr").length);
+    </script>
+  </body></html>`;
+
+  return HtmlService.createHtmlOutput(html);
+}
